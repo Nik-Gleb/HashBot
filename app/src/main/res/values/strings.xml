@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Hash Bot</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="hello_world">Hello world!</string>
+
+    <string-array name="hash_tags">
+        <item>Android</item>
+        <item>Dribble</item>
+        <item>Twitter</item>
+    </string-array>
+
+</resources>
