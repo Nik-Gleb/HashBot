@@ -5,6 +5,12 @@
     <string name="title_activity_main">MainActivity</string>
     <string name="hello_world">Hello world!</string>
 
+    <string name="message_no_blogs">There are no blogs</string>
+    <string name="message_cannot_load">Can\'t load</string>
+
+    <string name="text_retry">Retry</string>
+
+
     <string-array name="hash_tags">
         <item>Android</item>
         <item>Dribble</item>

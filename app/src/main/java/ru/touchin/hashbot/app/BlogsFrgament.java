@@ -9,19 +9,26 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.Random;
 
 import ru.touchin.hashbot.HashBotApplication;
 import ru.touchin.hashbot.R;
+import ru.touchin.hashbot.utils.Utils;
 
 /**
  * Blogs Fragment.
  * For displaying blogs list.
  * Created by Gleb on 18.08.2015.
  */
-public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapter {
+public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapter, View.OnClickListener {
 
     /** The Blogs Fragment LOG TAG. */
     private static final String LOG_TAG = "BlogsFragment";
@@ -29,17 +36,35 @@ public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapte
     /** The Blogs Fragment ARG TAG. */
     private static final String ARG_TAG = "hash_tag";
 
+    /** State if content successful loaded. */
+    private static final int STATE_CONTENT = 0;
+    /** State if content loading was failed. */
+    private static final int STATE_FAILED = 1;
+    /** State if content loading now. */
+    private static final int STATE_LOADING = 2;
+
+    /** Current content state. */
+    private int mState = STATE_LOADING;
+
     /** The Flag of UI-Available. */
     private boolean isUiAvailable = false;
 
     /** ListView Widget. */
     private ListView mListView = null;
+    /** Empty Content Widget. */
+    private TextView mTextView = null;
+    /** Error Message Widget. */
+    private LinearLayout mLinearLayout = null;
+    /** Retry button. */
+    private Button mButton = null;
+    /** Progress Bar. */
+    private ProgressBar mProgressBar = null;
 
     /** The Activity Class Name. */
     private String mActivityName = null;
 
     /** All Blogs by   */
-    private CharSequence[] mBlogs = new CharSequence[] {
+    private CharSequence[] mBlogs = null;/*new CharSequence[] {
             "Item 00",
             "Item 01",
             "Item 02",
@@ -63,7 +88,7 @@ public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapte
             "Item 20",
             "Item 21"
 
-    };
+    };*/
 
     /** Empty default constructor. */
     public BlogsFrgament(){};
@@ -76,6 +101,7 @@ public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapte
         super.onAttach(activity);
         mActivityName  = activity.getClass().getSimpleName();
         log(Log.DEBUG, "onAttach");
+        loadBlogs();
     }
 
     /* (non-Javadoc)
@@ -112,12 +138,25 @@ public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapte
     private final void initUi(View view) {
         // Init Widgets
 
+        mLinearLayout = (LinearLayout) view.findViewById(R.id.error_layout);
+
+        mButton = (Button) mLinearLayout.findViewById(R.id.button_retry);
+        mButton.setOnClickListener(this);
+
+        mTextView = (TextView) view.findViewById(R.id.text_view_empty);
+
         mListView = (ListView) view.findViewById(R.id.list_view);
         mListView.setAdapter(new BlogsAdapter(this));
+
+        mProgressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
 
         isUiAvailable = true;
 
         invalidateListViewAndBlogs();
+
+        invalidateProgressBarAndState();
+        invalidateErrorLayoutAndState();
+        invalidateListViewAndState();
     }
 
 
@@ -125,8 +164,17 @@ public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapte
     private final void doneUi() {
         // Done Widgets
 
+        mProgressBar = null;
+
         mListView.setAdapter(null);
         mListView = null;
+
+        mTextView = null;
+
+        mButton.setOnClickListener(null);
+        mButton = null;
+
+        mLinearLayout = null;
 
         isUiAvailable = false;
 
@@ -134,9 +182,39 @@ public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapte
 
     /** Bind ListView and data    */
     private final void invalidateListViewAndBlogs() {
-        if (isUiAvailable)
-            ((BaseAdapter)mListView.getAdapter()).notifyDataSetChanged();
+        if (isUiAvailable) {
+            ((BaseAdapter) mListView.getAdapter()).notifyDataSetChanged();
+            mTextView.setVisibility(mBlogs == null || mBlogs.length == 0 ?
+                    View.VISIBLE : View.INVISIBLE);
+        }
     }
+
+    /** Bind ListView and state. */
+    private final void invalidateListViewAndState() {
+        if (isUiAvailable)
+            mListView.setVisibility(mState == STATE_CONTENT ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    /** Bind ProgressBar and state. */
+    private final void invalidateProgressBarAndState() {
+        if (isUiAvailable) {
+            final boolean visibility = mState == STATE_LOADING;
+            mProgressBar.setVisibility(visibility ? View.VISIBLE : View.INVISIBLE);
+            if (visibility && mTextView.getVisibility() == View.VISIBLE)
+                mTextView.setVisibility(View.INVISIBLE);
+        }
+    }
+
+    /** Bind Error Message and state. */
+    private final void invalidateErrorLayoutAndState() {
+        if (isUiAvailable) {
+            final boolean visibility = mState == STATE_FAILED;
+            mLinearLayout.setVisibility(visibility ? View.VISIBLE : View.INVISIBLE);
+            if (visibility && mTextView.getVisibility() == View.VISIBLE)
+                mTextView.setVisibility(View.INVISIBLE);
+        }
+    }
+
 
     /**
      * Log message to LogCat - console
@@ -188,8 +266,119 @@ public class BlogsFrgament extends Fragment implements BlogsAdapter.IBlogsAdapte
     @Override
     public final CharSequence[] getBlogs() {return mBlogs;}
 
+    /** @param blogs to set new @link #mBlogs. */
+    private final void setBlogs(CharSequence[] blogs) {
+        if (compareBlogs(mBlogs, blogs)) return;
+        mBlogs = blogs;
+        invalidateListViewAndBlogs();
+    }
+
+    /** @param newState fragment new state. */
+    private final void setState(int newState) {
+        if (mState == newState) return;
+        mState = newState;
+        invalidateProgressBarAndState();
+        invalidateErrorLayoutAndState();
+        invalidateListViewAndState();
+    }
+
+    /**
+     * Compare two blog arrays
+     * @param oldBlogs old array
+     * @param newBlogs new array
+     * @return true if they are equals
+     */
+    private static final boolean compareBlogs(CharSequence[] oldBlogs, CharSequence[] newBlogs) {
+        if (oldBlogs == null && newBlogs == null) return true;
+
+        if((oldBlogs == null && newBlogs != null)
+                || oldBlogs != null && newBlogs == null
+                || oldBlogs.length != newBlogs.length){
+            return false;
+        }
+
+        return Arrays.equals(oldBlogs, newBlogs);
+
+    }
+
     /** @return hash tag for search. */
     public final CharSequence getHashTag() {
         return getArguments() != null ? getArguments().getCharSequence(ARG_TAG) : null;
     };
+
+    /**
+     * Called when a view has been clicked.
+     *
+     * @param v The view that was clicked.
+     */
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.button_retry:
+                loadBlogs();
+                break;
+            default:
+                break;
+        }
+
+    }
+
+    /** Request for load new Blogs. */
+    private final void loadBlogs() {
+
+        setState(STATE_LOADING);
+
+        final Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                boolean isFailed = false;
+                CharSequence[] newBlogs = null;
+                try {
+                    newBlogs = getRandomBlogs();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    isFailed = true;
+                }
+
+                final boolean isFailedMainThread = isFailed;
+                final CharSequence[] newBlogsMainThread = newBlogs;
+
+                if (getActivity() == null) return;
+
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!isFailedMainThread) {
+                            setBlogs(newBlogsMainThread);
+                            setState(STATE_CONTENT);
+                        } else
+                            setState(STATE_FAILED);
+                    }
+                });
+
+            }
+        });
+
+        thread.start();
+
+        /*new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+               thread.interrupt();
+            }
+        }, 500);*/
+    }
+
+    /** @return emulated twitter - blogs. */
+    private final CharSequence[] getRandomBlogs() throws InterruptedException {
+        Thread.sleep(2000);
+        final Random r = new Random();
+        final int count = r.nextInt(99) + 1;
+        final CharSequence[] result = new CharSequence[count];
+        for (int i = 0; i < count; i++)
+            result[i] = Utils.randomString();
+        return result;
+
+    }
 }

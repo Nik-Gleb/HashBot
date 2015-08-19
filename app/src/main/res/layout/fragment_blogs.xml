@@ -1,6 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ListView
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:id="@+id/list_view"/>
+    android:animateLayoutChanges="true">
+
+    <ListView
+        android:id="@+id/list_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" />
+
+    <LinearLayout
+        android:id="@+id/error_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:text="@string/message_cannot_load"
+            android:id="@+id/text_view_failed"
+            android:layout_gravity="center"
+            android:typeface="serif"
+            android:textStyle="italic"
+            android:drawablePadding="4dp"
+            android:drawableTop="@drawable/ic_error"/>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/text_retry"
+            android:id="@+id/button_retry"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"/>
+
+
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="@string/message_no_blogs"
+        android:id="@+id/text_view_empty"
+        android:layout_gravity="center"
+        android:typeface="serif"
+        android:textStyle="italic"
+        android:drawableTop="@drawable/ic_empty_content"
+        android:drawablePadding="4dp"/>
+
+
+</FrameLayout>
